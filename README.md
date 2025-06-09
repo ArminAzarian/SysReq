@@ -1,17 +1,17 @@
-#AI Requirements Breakdown Agent for Codebeamer
+# AI Requirements Breakdown Agent for Codebeamer
 
-##Overview
+## Overview
 The AI Requirements Breakdown Agent is a sophisticated integration tool that enhances Codebeamer's requirements management capabilities by leveraging Large Language Models (LLMs) to automatically analyze and decompose user stories into detailed system requirements.
 Features
 
-##Core Functionality
+## Core Functionality
 
 Intelligent Analysis: Uses advanced LLM capabilities to understand user stories and requirements
 Hierarchical Breakdown: Decomposes high-level requirements into detailed, actionable system requirements
 Multi-Level Processing: Supports breaking down requirements into multiple levels of detail
 Context Menu Integration: Seamlessly integrates with Codebeamer's user interface
 
-##Requirement Categories
+## Requirement Categories
 
 Functional Requirements: Core system behaviors and features
 Non-Functional Requirements: Performance, security, and quality attributes
@@ -20,15 +20,15 @@ Dependencies: External system dependencies and prerequisites
 Assumptions: Key assumptions underlying the requirements
 Risks: Potential risks and mitigation strategies
 
-##Installation and Setup
-###Prerequisites
+## Installation and Setup
+### Prerequisites
 
 Codebeamer instance with REST API access
 Valid Codebeamer user account with appropriate permissions
 LLM API access (OpenAI GPT-4 or compatible)
 Modern web browser with JavaScript support
 
-###Configuration Steps
+### Configuration Steps
 
 Update Configuration Variables
 javascriptconst agentConfig = {
@@ -41,14 +41,14 @@ javascriptconst agentConfig = {
     model: 'gpt-4'
 };
 
-###Deploy the Script
+### Deploy the Script
 
 Add the JavaScript code to your Codebeamer instance
 Include it in your project's custom scripts section
 Ensure proper loading order with Codebeamer's core libraries
 
 
-###Configure Permissions
+### Configure Permissions
 
 Ensure the user account has read/write access to requirements
 Verify API access permissions are properly configured
@@ -56,7 +56,7 @@ Test connectivity to both Codebeamer and LLM APIs
 
 
 
-##Usage Guide
+## Usage Guide
 Basic Operation
 
 Navigate to User Story or Requirement
@@ -65,20 +65,20 @@ Open any user story or requirement item in Codebeamer
 The AI agent works with items of type "User Story" or "Requirement"
 
 
-##Access Context Menu
+## Access Context Menu
 
 Right-click on the item to open the context menu
 Select "AI Requirements Breakdown" from the menu options
 
 
-##Review Generated Breakdown
+## Review Generated Breakdown
 
 The agent will analyze the item and generate a comprehensive breakdown
 Review the suggested requirements across all categories
 Verify the analysis meets your project's standards
 
 
-##Create Requirements
+## Create Requirements
 
 Click "Create Requirements" to automatically generate new requirement items
 The agent will create properly linked child requirements
@@ -86,7 +86,7 @@ All relationships and metadata are automatically managed
 
 
 
-##Advanced Features
+## Advanced Features
 Custom Prompting
 The agent uses sophisticated prompt engineering to ensure high-quality analysis:
 
@@ -94,31 +94,31 @@ Context-aware analysis based on item type and content
 Industry best practices for requirements decomposition
 Structured output format for consistent results
 
-##Hierarchical Processing
+## Hierarchical Processing
 
 Level 1: User Story → System Requirements
 Level 2: System Requirements → Detailed Requirements
 Level 3: Detailed Requirements → Implementation Tasks
 
-##Quality Assurance
+## Quality Assurance
 
 Automated validation of generated requirements
 Consistency checking across requirement categories
 Completeness verification using predefined criteria
 
-##API Integration
+## API Integration
 Codebeamer REST API
 The agent leverages Codebeamer's REST API v3 for:
 
-##Retrieving item details and metadata
+## Retrieving item details and metadata
 Creating new requirement items
 Establishing parent-child relationships
 Managing custom fields and properties
 
-##LLM Integration
+## LLM Integration
 Compatible with multiple LLM providers:
 
-##OpenAI GPT-4/GPT-3.5: Primary recommendation
+## OpenAI GPT-4/GPT-3.5: Primary recommendation
 Azure OpenAI: Enterprise-grade deployment
 Custom LLM Endpoints: Configurable for proprietary models
 
@@ -143,7 +143,7 @@ javascriptcodebeamerConfig: {
 }
 Customization
 
-##Requirement Templates
+## Requirement Templates
 Modify the prompt templates to match your organization's standards:
 
 Custom requirement formats
@@ -172,7 +172,7 @@ Symptom: "Failed to fetch item details"
 Solution: Verify Codebeamer URL and credentials
 Check: Network connectivity and firewall settings
 
-##LLM API Failures
+## LLM API Failures
 
 Symptom: "LLM API error"
 Solution: Validate API key and endpoint configuration
@@ -198,57 +198,57 @@ All processing occurs via secure API calls
 No local storage of sensitive information
 Configurable data retention policies
 
-##Authentication
+## Authentication
 
 Uses Codebeamer's built-in authentication
 Supports SSO and enterprise authentication
 API key encryption and secure storage
 
-##Compliance
+## Compliance
 
 GDPR compliance for European operations
 SOC 2 Type II compliance available
 Industry-specific compliance options
 
-##Performance Optimization
-###Batch Processing
+## Performance Optimization
+### Batch Processing
 
 Process multiple items simultaneously
 Configurable batch sizes
 Progress tracking and cancellation
 
-###Caching
+### Caching
 
 Intelligent caching of LLM responses
 Reduced API calls for similar content
 Configurable cache duration
 
-###Rate Limiting
+### Rate Limiting
 
 Built-in rate limiting for API calls
 Configurable throttling parameters
 Graceful degradation under load
 
-##Best Practices
+## Best Practices
 Content Preparation
 
 Ensure user stories have clear acceptance criteria
 Include relevant context and background information
 Use consistent terminology and formatting
 
-##Review Process
+## Review Process
 
 Always review AI-generated requirements
 Validate against project standards
 Involve domain experts in the review process
 
-##Maintenance
+## Maintenance
 
 Regularly update LLM model versions
 Monitor API usage and costs
 Keep configuration up to date
 
-##Future Enhancements
+## Future Enhancements
 Planned Features
 
 Integration with additional LLM providers
@@ -257,13 +257,13 @@ Automated requirement validation
 Machine learning-based improvement
 Automatic review support
 
-##Roadmap
+## Roadmap
 
 Enhanced multi-language support
 Advanced analytics and reporting
 Integration with testing frameworks
 
-##Support and Documentation
+## Support and Documentation
 Resources
 
 API Documentation: https://docs.anthropic.com
@@ -273,9 +273,6 @@ Community Forum: User community and support
 License and Terms
 This AI Requirements Breakdown Agent is provided under MIT standard software licensing terms.
 
-##Contact Information
+## Contact Information
 For technical support and customization requests:
-
-Create issues in the project repository
-Contact your Codebeamer administrator
-Reach out to the development team
+feel free to cotnact me.
