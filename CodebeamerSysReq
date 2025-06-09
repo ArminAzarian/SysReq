@@ -1,0 +1,426 @@
+// AI Requirements Breakdown Agent for Codebeamer
+// This agent integrates with Codebeamer's REST API and provides AI-powered breakdown of user stories
+
+class AIRequirementsAgent {
+    constructor(config) {
+        this.codebeamerConfig = {
+            baseUrl: config.codebeamerUrl,
+            username: config.username,
+            password: config.password,
+            projectId: config.projectId
+        };
+        
+        this.llmConfig = {
+            apiUrl: config.llmApiUrl || 'https://api.openai.com/v1/chat/completions',
+            apiKey: config.llmApiKey,
+            model: config.model || 'gpt-4'
+        };
+        
+        this.auth = btoa(`${this.codebeamerConfig.username}:${this.codebeamerConfig.password}`);
+    }
+
+    // Initialize the context menu integration
+    initializeContextMenu() {
+        if (typeof CB !== 'undefined' && CB.contextMenu) {
+            CB.contextMenu.addItem({
+                id: 'ai-breakdown',
+                label: 'AI Requirements Breakdown',
+                icon: 'fa-brain',
+                condition: (item) => {
+                    return item.typeName === 'User Story' || item.typeName === 'Requirement';
+                },
+                action: (item) => this.handleContextMenuAction(item)
+            });
+        }
+    }
+
+    // Handle context menu action
+    async handleContextMenuAction(item) {
+        try {
+            this.showProgressDialog('Analyzing requirements...');
+            
+            const itemDetails = await this.getItemDetails(item.id);
+            const breakdown = await this.generateBreakdown(itemDetails);
+            
+            this.hideProgressDialog();
+            this.showBreakdownDialog(breakdown, item);
+        } catch (error) {
+            this.hideProgressDialog();
+            this.showErrorDialog('Failed to generate breakdown: ' + error.message);
+        }
+    }
+
+    // Get item details from Codebeamer
+    async getItemDetails(itemId) {
+        const response = await fetch(`${this.codebeamerConfig.baseUrl}/rest/v3/items/${itemId}`, {
+            headers: {
+                'Authorization': `Basic ${this.auth}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch item details: ${response.statusText}`);
+        }
+
+        return await response.json();
+    }
+
+    // Generate breakdown using LLM
+    async generateBreakdown(itemDetails) {
+        const prompt = this.buildPrompt(itemDetails);
+        
+        const response = await fetch(this.llmConfig.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.llmConfig.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: this.llmConfig.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: this.getSystemPrompt()
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`LLM API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return this.parseBreakdownResponse(data.choices[0].message.content);
+    }
+
+    // Build prompt for LLM
+    buildPrompt(itemDetails) {
+        return `
+Please analyze the following ${itemDetails.typeName.toLowerCase()} and break it down into detailed system requirements:
+
+**Title:** ${itemDetails.name}
+**Description:** ${itemDetails.description || 'No description provided'}
+**Acceptance Criteria:** ${this.extractAcceptanceCriteria(itemDetails)}
+**Priority:** ${itemDetails.priority || 'Not specified'}
+**Story Points:** ${itemDetails.storyPoints || 'Not estimated'}
+
+Please provide:
+1. Functional requirements (what the system must do)
+2. Non-functional requirements (performance, security, usability)
+3. Technical requirements (architecture, integration points)
+4. Acceptance criteria for each requirement
+5. Dependencies and assumptions
+6. Risk assessment
+
+Format the response as structured JSON for easy parsing.
+        `.trim();
+    }
+
+    // System prompt for LLM
+    getSystemPrompt() {
+        return `
+You are an expert Business Analyst and Requirements Engineer. Your task is to analyze user stories and requirements, then break them down into detailed, testable system requirements.
+
+For each breakdown, provide:
+- Clear, specific, and measurable requirements
+- Proper categorization (functional, non-functional, technical)
+- Acceptance criteria using Given-When-Then format where appropriate
+- Risk assessment and mitigation strategies
+- Dependencies and assumptions
+
+Always respond in valid JSON format with the following structure:
+{
+  "functional_requirements": [],
+  "non_functional_requirements": [],
+  "technical_requirements": [],
+  "dependencies": [],
+  "assumptions": [],
+  "risks": []
+}
+
+Each requirement should have: id, title, description, acceptance_criteria, priority, and estimated_effort.
+        `.trim();
+    }
+
+    // Parse LLM response
+    parseBreakdownResponse(response) {
+        try {
+            // Clean up response to extract JSON
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            }
+            throw new Error('No valid JSON found in response');
+        } catch (error) {
+            console.error('Failed to parse LLM response:', error);
+            return this.createFallbackBreakdown(response);
+        }
+    }
+
+    // Create fallback breakdown if JSON parsing fails
+    createFallbackBreakdown(response) {
+        return {
+            functional_requirements: [{
+                id: 'FR-001',
+                title: 'Parsed from LLM Response',
+                description: response,
+                acceptance_criteria: 'To be defined',
+                priority: 'Medium',
+                estimated_effort: 'TBD'
+            }],
+            non_functional_requirements: [],
+            technical_requirements: [],
+            dependencies: [],
+            assumptions: [],
+            risks: []
+        };
+    }
+
+    // Extract acceptance criteria from item
+    extractAcceptanceCriteria(itemDetails) {
+        // Look for acceptance criteria in description or custom fields
+        const description = itemDetails.description || '';
+        const acMatch = description.match(/acceptance criteria:?\s*(.*?)(?:\n\n|\n[A-Z]|$)/is);
+        return acMatch ? acMatch[1].trim() : 'Not specified';
+    }
+
+    // Create requirements in Codebeamer
+    async createRequirements(breakdown, parentItemId) {
+        const results = [];
+        
+        for (const category of Object.keys(breakdown)) {
+            const requirements = breakdown[category];
+            
+            for (const req of requirements) {
+                try {
+                    const createdItem = await this.createRequirement(req, parentItemId, category);
+                    results.push(createdItem);
+                } catch (error) {
+                    console.error(`Failed to create requirement ${req.id}:`, error);
+                }
+            }
+        }
+        
+        return results;
+    }
+
+    // Create individual requirement
+    async createRequirement(requirement, parentItemId, category) {
+        const itemData = {
+            name: requirement.title,
+            description: this.formatRequirementDescription(requirement),
+            typeName: 'Requirement',
+            status: 'Draft',
+            priority: this.mapPriority(requirement.priority),
+            customFields: {
+                'Category': this.formatCategory(category),
+                'Acceptance_Criteria': requirement.acceptance_criteria,
+                'Estimated_Effort': requirement.estimated_effort
+            }
+        };
+
+        const response = await fetch(`${this.codebeamerConfig.baseUrl}/rest/v3/projects/${this.codebeamerConfig.projectId}/items`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Basic ${this.auth}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(itemData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create requirement: ${response.statusText}`);
+        }
+
+        const createdItem = await response.json();
+        
+        // Create parent-child relationship
+        await this.createRelationship(parentItemId, createdItem.id, 'parent');
+        
+        return createdItem;
+    }
+
+    // Create relationship between items
+    async createRelationship(fromId, toId, type) {
+        const relationshipData = {
+            from: { id: fromId },
+            to: { id: toId },
+            type: type
+        };
+
+        await fetch(`${this.codebeamerConfig.baseUrl}/rest/v3/associations`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Basic ${this.auth}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(relationshipData)
+        });
+    }
+
+    // Format requirement description
+    formatRequirementDescription(requirement) {
+        return `
+**Description:** ${requirement.description}
+
+**Acceptance Criteria:**
+${requirement.acceptance_criteria}
+
+**Estimated Effort:** ${requirement.estimated_effort}
+        `.trim();
+    }
+
+    // Map priority values
+    mapPriority(priority) {
+        const priorityMap = {
+            'High': 'Highest',
+            'Medium': 'High',
+            'Low': 'Medium',
+            'Critical': 'Highest'
+        };
+        return priorityMap[priority] || 'Medium';
+    }
+
+    // Format category name
+    formatCategory(category) {
+        return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    // UI Methods for dialog management
+    showProgressDialog(message) {
+        if (typeof CB !== 'undefined' && CB.dialog) {
+            CB.dialog.progress({
+                title: 'AI Requirements Breakdown',
+                message: message
+            });
+        }
+    }
+
+    hideProgressDialog() {
+        if (typeof CB !== 'undefined' && CB.dialog) {
+            CB.dialog.close();
+        }
+    }
+
+    showBreakdownDialog(breakdown, originalItem) {
+        const dialogContent = this.buildBreakdownDialogContent(breakdown);
+        
+        if (typeof CB !== 'undefined' && CB.dialog) {
+            CB.dialog.show({
+                title: `AI Breakdown: ${originalItem.name}`,
+                content: dialogContent,
+                width: 800,
+                height: 600,
+                buttons: [
+                    {
+                        text: 'Create Requirements',
+                        primary: true,
+                        action: () => this.handleCreateRequirements(breakdown, originalItem.id)
+                    },
+                    {
+                        text: 'Cancel',
+                        action: () => CB.dialog.close()
+                    }
+                ]
+            });
+        }
+    }
+
+    buildBreakdownDialogContent(breakdown) {
+        let content = '<div class="ai-breakdown-content">';
+        
+        for (const [category, requirements] of Object.entries(breakdown)) {
+            if (requirements.length > 0) {
+                content += `<h3>${this.formatCategory(category)}</h3>`;
+                content += '<ul>';
+                
+                for (const req of requirements) {
+                    content += `
+                        <li>
+                            <strong>${req.title}</strong>
+                            <p>${req.description}</p>
+                            <em>Priority: ${req.priority} | Effort: ${req.estimated_effort}</em>
+                        </li>
+                    `;
+                }
+                
+                content += '</ul>';
+            }
+        }
+        
+        content += '</div>';
+        return content;
+    }
+
+    async handleCreateRequirements(breakdown, parentItemId) {
+        try {
+            this.showProgressDialog('Creating requirements...');
+            
+            const createdItems = await this.createRequirements(breakdown, parentItemId);
+            
+            this.hideProgressDialog();
+            this.showSuccessDialog(`Successfully created ${createdItems.length} requirements`);
+            
+            // Refresh the current view
+            if (typeof CB !== 'undefined' && CB.view) {
+                CB.view.refresh();
+            }
+            
+        } catch (error) {
+            this.hideProgressDialog();
+            this.showErrorDialog('Failed to create requirements: ' + error.message);
+        }
+    }
+
+    showErrorDialog(message) {
+        if (typeof CB !== 'undefined' && CB.dialog) {
+            CB.dialog.error({
+                title: 'Error',
+                message: message
+            });
+        } else {
+            alert('Error: ' + message);
+        }
+    }
+
+    showSuccessDialog(message) {
+        if (typeof CB !== 'undefined' && CB.dialog) {
+            CB.dialog.info({
+                title: 'Success',
+                message: message
+            });
+        } else {
+            alert('Success: ' + message);
+        }
+    }
+}
+
+// Configuration and initialization
+const agentConfig = {
+    codebeamerUrl: 'https://your-codebeamer-instance.com',
+    username: 'your-username',
+    password: 'your-password',
+    projectId: 'your-project-id',
+    llmApiUrl: 'https://api.openai.com/v1/chat/completions',
+    llmApiKey: 'your-openai-api-key',
+    model: 'gpt-4'
+};
+
+// Initialize the agent when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const agent = new AIRequirementsAgent(agentConfig);
+    agent.initializeContextMenu();
+});
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = AIRequirementsAgent;
+}
